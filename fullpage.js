@@ -259,6 +259,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     conversationHistory.push(userMsg);
     userInput.value = '';
 
+    const loadingIndicator = document.querySelector('.loading-indicator');
+    loadingIndicator.classList.remove('hidden');
+    sendButton.disabled = true;
+
     try {
       const messageDiv = document.createElement('div');
       messageDiv.className = 'message assistant';
@@ -309,6 +313,9 @@ document.addEventListener('DOMContentLoaded', async function() {
       chatHistory.scrollTop = chatHistory.scrollHeight;
     } catch (error) {
       addMessageToChat('error', `Error: ${error.message}`);
+    } finally {
+      loadingIndicator.classList.add('hidden');
+      sendButton.disabled = false;
     }
 
     // After successful message exchange, save the chat
@@ -355,19 +362,32 @@ document.addEventListener('DOMContentLoaded', async function() {
     loadModelSettings(currentModel);
   }
 
-  function displayChatHistory() {
+  function displayChatHistory(searchQuery = '') {
     const chatHistoryList = document.getElementById('chat-history-list');
-    const chats = StorageManager.getAllChats()
+    let chats = StorageManager.getAllChats()
       .sort((a, b) => {
-        // Get last message timestamp for each chat
         const aTime = a.messages?.length ? 
           new Date(a.messages[a.messages.length - 1].timestamp) : 
           new Date(a.createdAt);
         const bTime = b.messages?.length ? 
           new Date(b.messages[b.messages.length - 1].timestamp) : 
           new Date(b.createdAt);
-        return bTime - aTime; // Sort descending (newest first)
+        return bTime - aTime;
       });
+
+    // Filter chats based on search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      chats = chats.filter(chat => {
+        // Search in title
+        if (chat.title?.toLowerCase().includes(query)) return true;
+        // Search in messages
+        return chat.messages?.some(msg => 
+          msg.content?.toLowerCase().includes(query) && msg.role !== 'system'
+        );
+      });
+    }
+
     const currentChat = StorageManager.getCurrentChat();
 
     chatHistoryList.innerHTML = chats.map(chat => {
@@ -450,4 +470,33 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // Initialize chat display
   displayChatHistory();
+
+  // Add search functionality
+  const searchInput = document.getElementById('search-chats');
+  let searchTimeout;
+
+  searchInput.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      displayChatHistory(e.target.value.trim());
+    }, 300); // Debounce search for better performance
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      switch(e.key) {
+        case 'Enter': // Ctrl/Cmd + Enter to send
+          if (document.activeElement === userInput) {
+            e.preventDefault();
+            handleSendMessage();
+          }
+          break;
+        case 'n': // Ctrl/Cmd + N for new chat
+          e.preventDefault();
+          document.getElementById('new-chat').click();
+          break;
+      }
+    }
+  });
 });
