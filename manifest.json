@@ -1,10 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "My Chrome Extension",
+  "name": "gondolin",
   "version": "1.0",
-  "description": "A basic Chrome extension",
+  "description": "another AI app",
   "action": {},
-  "permissions": ["sidePanel", "tabs", "scripting"],
+  "permissions": [
+    "sidePanel",
+    "tabs",
+    "scripting",
+    "storage",
+    "downloads",
+    "fileSystem",
+    "fileSystem.write"
+  ],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"

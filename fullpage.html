@@ -1,16 +1,129 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Gondolin Full Page</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Chat Interface</title>
     <link rel="stylesheet" href="fullpage.css">
   </head>
   <body>
-    <div class="container">
-      <h1>Gondolin Full Page View</h1>
-      <div class="content">
-        <div id="main-content"></div>
-      </div>
+    <header class="top-bar">
+      <label for="model-selector">AI Model:</label>
+      <select id="model-selector" name="model">
+        <!-- Models will be populated dynamically -->
+      </select>
+    </header>
+
+    <div class="main-container">
+      <main class="chat-wrapper">
+        <div id="chat-history" class="message-area" aria-live="polite">
+          <!-- Chat messages will appear here -->
+        </div>
+
+        <div class="input-area">
+          <textarea
+            id="userInput"
+            placeholder="Type your message here..."
+            aria-label="Chat message input"
+          ></textarea>
+          <button id="sendMessage" type="button">Send</button>
+        </div>
+      </main>
+
+      <aside class="sidebar">
+        <nav class="sidebar-nav">
+          <!-- Add 'active' class to the default button -->
+          <button type="button" data-target="history-panel" class="active">
+            History
+          </button>
+          <button type="button" data-target="api-settings-panel">
+            API/Model
+          </button>
+          <button type="button" data-target="artifacts-panel">
+            Artifacts
+          </button>
+          <button type="button" data-target="llm-settings-panel">
+            LLM
+          </button>
+        </nav>
+
+        <div class="sidebar-content">
+          <!-- Add 'active' class to the default panel -->
+          <div id="history-panel" class="sidebar-panel active">
+            <h3>Chat History</h3>
+            <button id="new-chat" class="primary-button">+ New Chat</button>
+            <input type="text" id="search-chats" placeholder="Search chats..." />
+            <div id="chat-history-list" class="chat-history-list">
+              <!-- Chat history items will be dynamically added here -->
+            </div>
+          </div>
+
+          <div id="api-settings-panel" class="sidebar-panel">
+            <h3>API/Model Settings</h3>
+            <div class="model-edit-container">
+              <button id="add-model" class="primary-button">Add New Model</button>
+              <div id="model-edit-form" class="model-edit-form hidden">
+                <div class="setting">
+                  <label for="model-name">Model Name:</label>
+                  <input type="text" id="model-name" name="model-name" />
+                </div>
+                <div class="setting">
+                  <label for="model-id">Model ID:</label>
+                  <input type="text" id="model-id" name="model-id" />
+                </div>
+                <div class="setting">
+                  <label for="api-key">API Key:</label>
+                  <input type="password" id="api-key" name="api-key" />
+                </div>
+                <div class="setting">
+                  <label for="endpoint-url">Endpoint URL:</label>
+                  <input type="text" id="endpoint-url" name="endpoint-url" />
+                </div>
+                <div class="buttons">
+                  <button id="save-model" type="button">Save</button>
+                  <button id="cancel-edit" type="button">Cancel</button>
+                  <button id="delete-model" type="button" class="danger">Delete</button>
+                </div>
+              </div>
+            </div>
+            <div id="model-list" class="model-list">
+              <!-- Models will be listed here -->
+            </div>
+          </div>
+
+          <div id="artifacts-panel" class="sidebar-panel">
+            <h3>Artifacts</h3>
+            <p>Generated files or outputs will appear here.</p>
+            <ul>
+              <li>generated_code.py</li>
+              <li>analysis_report.pdf</li>
+            </ul>
+            <!-- List of artifacts -->
+          </div>
+
+          <div id="llm-settings-panel" class="sidebar-panel">
+            <h3>LLM Settings</h3>
+            <div class="setting">
+              <label for="system-prompt">System Prompt:</label>
+              <textarea id="system-prompt" name="system-prompt"></textarea>
+            </div>
+            <div class="setting">
+              <label for="temperature">Temperature:</label>
+              <input type="range" id="temperature" name="temperature" min="0" max="1" step="0.1" value="0.7" />
+              <span id="temperature-value">0.7</span>
+            </div>
+            <div class="setting">
+              <label for="max-tokens">Max Tokens:</label>
+              <input type="number" id="max-tokens" name="max-tokens" value="1024" />
+            </div>
+            <button id="save-llm-settings" class="primary-button">Save Settings</button>
+          </div>
+        </div>
+      </aside>
     </div>
+
+    <script src="api_connect.js"></script>
+    <script src="storage.js"></script>
     <script src="fullpage.js"></script>
   </body>
 </html>
