@@ -234,101 +234,107 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (!userMessage) return;
 
     const currentModel = StorageManager.getCurrentModel();
-    const lastMessage = conversationHistory[conversationHistory.length - 1];
-    
-    // Check if model changed
-    if (lastMessage && lastMessage.modelId !== currentModel.id) {
-      const modelChangeMsg = { 
-        role: 'system', 
-        content: `Model switched to: ${currentModel.name}`,
-        modelId: currentModel.id,
-        timestamp: new Date().toISOString()
-      };
-      conversationHistory.push(modelChangeMsg);
-      addMessageToChat('system', modelChangeMsg.content, true);
+    if (!currentModel) {
+      addMessageToChat('error', 'No model selected. Please configure a model first.');
+      return;
     }
-
-    // Add user message
-    const userMsg = { 
-      role: 'user', 
-      content: userMessage,
-      modelId: currentModel.id,
-      timestamp: new Date().toISOString()
-    };
-    addMessageToChat('user', userMessage);
-    conversationHistory.push(userMsg);
-    userInput.value = '';
 
     const loadingIndicator = document.querySelector('.loading-indicator');
     loadingIndicator.classList.remove('hidden');
     sendButton.disabled = true;
+    userInput.disabled = true;
 
     try {
+      // Add user message
+      addMessageToChat('user', userMessage);
+      conversationHistory.push({
+        role: 'user',
+        content: userMessage,
+        modelId: currentModel.id,
+        timestamp: new Date().toISOString()
+      });
+
+      userInput.value = '';
+
       const messageDiv = document.createElement('div');
       messageDiv.className = 'message assistant';
       chatHistory.appendChild(messageDiv);
 
-      const stream = await chatWithAI(
-        currentModel.endpoint,
-        currentModel.apiKey,
-        currentModel.model,
-        conversationHistory,
-        { stream: true }
-      );
+      try {
+        const stream = await chatWithAI(
+          currentModel.endpoint,
+          currentModel.apiKey,
+          currentModel.id,
+          conversationHistory.map(msg => ({ role: msg.role, content: msg.content })),
+          {
+            stream: true,
+            temperature: currentModel.settings?.temperature || 0.7,
+            max_tokens: currentModel.settings?.maxTokens || 4096
+          }
+        );
 
-      const reader = stream.getReader();
-      let fullContent = '';
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const reader = stream.getReader();
+        let fullContent = '';
 
-        // Decode the stream
-        const chunk = new TextDecoder().decode(value);
-        const lines = chunk.split('\n').filter(line => line.trim() !== '');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-            
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices[0]?.delta?.content || '';
-              fullContent += content;
-              messageDiv.textContent = fullContent;
-            } catch (e) {
-              console.error('Error parsing stream:', e);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = new TextDecoder().decode(value);
+          const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices[0]?.delta?.content || '';
+                fullContent += content;
+                messageDiv.textContent = fullContent;
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+              } catch (e) {
+                console.error('Error parsing stream:', e);
+              }
             }
           }
         }
+
+        // Add assistant's message to conversation history
+        conversationHistory.push({
+          role: 'assistant',
+          content: fullContent,
+          modelId: currentModel.id,
+          timestamp: new Date().toISOString()
+        });
+
+        // Save the chat
+        const currentChat = StorageManager.getCurrentChat() || {
+          id: Date.now().toString(),
+          title: conversationHistory[1]?.content.slice(0, 30) + '...',
+          createdAt: new Date().toISOString(),
+          modelId: currentModel.id,
+          messages: []
+        };
+
+        currentChat.messages = [...conversationHistory];
+        StorageManager.saveChat(currentChat);
+        displayChatHistory();
+
+      } catch (error) {
+        messageDiv.remove();
+        throw error;
       }
 
-      conversationHistory.push({ 
-        role: 'assistant', 
-        content: fullContent,
-        modelId: currentModel.id,
-        timestamp: new Date().toISOString()
-      });
-      chatHistory.scrollTop = chatHistory.scrollHeight;
     } catch (error) {
       addMessageToChat('error', `Error: ${error.message}`);
     } finally {
       loadingIndicator.classList.add('hidden');
       sendButton.disabled = false;
+      userInput.disabled = false;
+      userInput.focus();
     }
-
-    // After successful message exchange, save the chat
-    const currentChat = StorageManager.getCurrentChat() || {
-      id: Date.now().toString(),
-      title: conversationHistory[1]?.content.slice(0, 30) + '...',
-      modelId: modelSelector.value,
-      messages: []
-    };
-
-    currentChat.messages = [...conversationHistory];
-    StorageManager.saveChat(currentChat);
-    displayChatHistory();
   }
 
   sendButton.addEventListener('click', handleSendMessage);
